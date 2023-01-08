@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+
+import sys  # System specific parameters and functions
+
+import argparse
+
+
+def show_usage():
+    print("Aside ~ take output of two files and show them side by side")
+    print("   Will show file1 next to file2")
+    print("Usage: aside [options] <file1> <file2>")
+    print("Options:")
+    print(" -v --version   Show version and exit")
+    print(" -h --help      Show this help")
+    print(' -g --gutter    Set gutter string, default is "  "')
+    print(
+        " -w --width     Set width of column a, default is 0, which is the longest line in that file"
+    )
+
+
+class Specimen(object):
+    filename = ""
+    lines = []
+    max_width = 0
+    height = 0
+
+    def __init__(self, filename=None, lines=[], text=""):
+        if filename:
+            self.filename = filename
+            self.readfile()
+
+        if lines:
+            self.lines = lines
+
+        self.calculate_dimensions()
+
+    def readfile(self):
+        """Read the file provided and populate the text lines"""
+        f = open(self.filename, "r")
+        self.lines = f.read().split("\n")
+
+        # Strip off any empty lines from the end
+        while self.lines[-1].strip() == "":
+            del self.lines[-1]
+
+    def calculate_dimensions(self):
+        """Calculate the longest line and the number of lines for this specimen's text"""
+        self.height = len(self.lines)
+
+        self.max_width = 0
+        for line in self.lines:
+            if len(line) > self.max_width:
+                self.max_width = len(line)
+
+    def get_line(self, index, width):
+        """Get a line by number to display cropping to a width"""
+        if width == 0:
+            # If the width entered is zero then use this specimen's max width
+            width = self.max_width
+
+        if index < len(self.lines):
+            # Line exists at this index for this specimen, so crop it and left
+            # justify it to the max width provided
+            return self.lines[index][0:width].expandtabs().ljust(width)
+        else:
+            # Line doesn't exist so return a blank one with the specified width
+            return "".ljust(width)
+
+
+if __name__ == "__main__":
+
+    # Setup and parse arguments
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("-v", "--version", action="store_true")
+    parser.add_argument("-h", "--help", action="store_true")
+    parser.add_argument("-w", "--width", action="store", type=int, default=0)
+    parser.add_argument("-g", "--gutter", action="store", default="  ")
+
+    (args, remaining_args) = parser.parse_known_args(sys.argv)
+
+    # Show version
+    if args.version:
+        print("1.1")
+        sys.exit(0)
+
+    # Show help
+    if args.help:
+        show_usage()
+        sys.exit(0)
+
+    width = args.width
+    rargs = remaining_args[1:]
+
+    if len(rargs) < 2:
+        print("Error: insufficient number of arguments")
+        show_usage()
+        sys.exit(1)
+
+    # Create specimens for each file input
+    specimens = []
+    for _filename in rargs:
+        specimens.append(Specimen(filename=_filename))
+
+    new_subject = ""
+
+    # Figure out the max height of texts
+    max_lines = max([s.height for s in specimens])
+
+    # Figure out the max width of the first text
+    if width == -1:
+        max_width = max([s.max_width for s in specimens])
+    else:
+        max_width = width
+
+    # Generate a new string showing the texts side by side
+    for i in range(0, max_lines):
+        for sindex in range(0, len(specimens)):
+            new_subject = new_subject + specimens[sindex].get_line(i, max_width)
+            new_subject = new_subject + args.gutter
+
+        new_subject = new_subject + "\n"
+
+    print(new_subject)
